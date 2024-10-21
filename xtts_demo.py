@@ -58,7 +58,7 @@ def load_model(xtts_checkpoint, xtts_config, xtts_vocab,xtts_speaker):
     print("Модель загружена!")
     return "Модель загружена!"
 
-def run_tts(lang, tts_text, speaker_audio_file, save_path, temperature, speed, length_penalty,repetition_penalty,top_k,top_p,sentence_split,use_config):
+def run_tts(lang, tts_text, speaker_audio_file, temperature, speed, length_penalty,repetition_penalty,top_k,top_p,sentence_split,use_config):
     if XTTS_MODEL is None or not speaker_audio_file:
         return "Для загрузки модели необходимо выполнить предыдущий шаг!!", None, None
 
@@ -96,7 +96,9 @@ def run_tts(lang, tts_text, speaker_audio_file, save_path, temperature, speed, l
     out["wav"] = torch.tensor(out["wav"]).unsqueeze(0)
     if not os.path.exists("output"):
         os.makedirs("output")
+    save_path=os.path.basename(speaker_audio_file)
     save_path=str(f'output\{save_path}')
+    print(save_path)
     torchaudio.save(save_path, out["wav"], 24000)
     audio = AudioSegment.from_file(speaker_audio_file)
     new_framerate = audio.frame_rate
@@ -520,10 +522,6 @@ if __name__ == "__main__":
                         label="Эталонный звук динамика:",
                         value="",
                     )
-                    save_path = gr.Textbox(
-                        label="Имя файла для сохранения+.wav(сохранится в папке 'output'):",
-                        value="test.wav",
-                    )
                     tts_language = gr.Dropdown(
                         label="Язык",
                         value="ru",
@@ -684,7 +682,6 @@ if __name__ == "__main__":
                     tts_language,
                     tts_text,
                     speaker_reference_audio,
-                    save_path,
                     temperature,
                     speed,
                     length_penalty,
