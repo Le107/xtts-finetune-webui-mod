@@ -154,7 +154,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--out_path",
         type=str,
-        help="Путь вывода (куда будут сохраняться данные и контрольные точки) По умолчанию: output/",
+        help="Путь вывода (куда будут сохраняться данные и контрольные точки) По умолчанию: finetune_models/",
         default=str(Path.cwd() / "finetune_models"),
     )
 
