@@ -346,7 +346,7 @@ if __name__ == "__main__":
             )
             clear_train_data = gr.Dropdown(
                 label="Очистить данные поезда, вы удалите выбранную папку после оптимизации",
-                value="all",
+                value="run",
                 choices=[
                     "none",
                     "run",
