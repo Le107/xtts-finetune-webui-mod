@@ -161,8 +161,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_epochs",
         type=int,
-        help="Количество эпох для тренировки. По умолчанию: 6",
-        default=6,
+        help="Количество эпох для тренировки. По умолчанию: 100",
+        default=100,
     )
     parser.add_argument(
         "--batch_size",
@@ -173,14 +173,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--grad_acumm",
         type=int,
-        help="Ступени накопления града. По умолчанию: 1",
+        help="Ступени накопления града. По умолчанию: 128",
         default=1,
     )
     parser.add_argument(
         "--max_audio_length",
         type=int,
-        help="Максимальный допустимый размер звука в секундах. По умолчанию: 11",
-        default=11,
+        help="Максимальный допустимый размер звука в секундах. По умолчанию: 20",
+        default=20,
     )
 
     args = parser.parse_args()
@@ -582,7 +582,7 @@ if __name__ == "__main__":
                             minimum=1,
                             maximum=100,
                             step=1,
-                            value=75,
+                            value=50,
                         )
                         top_p = gr.Slider(
                             label="top_p",
