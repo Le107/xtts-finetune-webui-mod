@@ -6,4 +6,5 @@
     "compute_f0": true,
     "compute_energy": true,
     "compute_linear_spec": true,
-    "use_speaker_weighted_sampler": true
+    "use_speaker_weighted_sampler": true,
+    "use_grad_scaler": true
