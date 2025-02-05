@@ -7,4 +7,6 @@
     "compute_energy": true,
     "compute_linear_spec": true,
     "use_speaker_weighted_sampler": true,
-    "use_grad_scaler": true
+    "use_grad_scaler": true,
+    "use_noise_augment": true
+6. Создание датасета по субтитрам.
