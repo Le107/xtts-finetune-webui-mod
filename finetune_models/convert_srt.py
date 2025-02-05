@@ -16,7 +16,7 @@ for item in Path('.').glob('*.srt'):
         while i < len(lines):
             if lines[i].isdigit():
                 index = str(lines[i]).rjust(3,"0")
-                i += 2  # Пропускаем тайм-коды
+                i += 2
                 output.append(f"{index}={lines[i]}")
             i += 1
         result = '\n'.join(output)
