@@ -1,1 +1,1 @@
-put the file here ffmpeg.exe
+Поместите сюда файл ffmpeg.exe
