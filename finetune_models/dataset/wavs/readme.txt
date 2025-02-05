@@ -1,1 +1,0 @@
-Transfer the slides of your audio files, which already have ready-made dialogues, in the format.wav. Make sure that there is a ready-made file in the root directory. Dialog.txt and run create_dataset.bat
