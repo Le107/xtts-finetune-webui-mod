@@ -9,4 +9,4 @@
     "use_speaker_weighted_sampler": true,
     "use_grad_scaler": true,
     "use_noise_augment": true
-6. Создание датасета по субтитрам.
+6. Создание датасета по субтитрам. (см. в finetune_models)
