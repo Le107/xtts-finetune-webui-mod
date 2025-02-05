@@ -1,1 +1,0 @@
-Dialog::FILE_NAME_1_0_0=The dialog itself!
