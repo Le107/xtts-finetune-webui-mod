@@ -65,7 +65,7 @@ def processSrtFile(f):
           bExecute = False
           commandLine = [ffmpeg, "-loglevel", "quiet",
             "-i", inFile, "-ss", ss, "-to", to, "-f", outFormat,
-            "{}{}.{}".format(targetFolder, outFile, outFormat)]
+            "{}{}.{}".format(targetFolder, str(outFile).rjust(3,"0"), outFormat)]
           subprocess.check_output(commandLine)
 
 if __name__ == "__main__":
