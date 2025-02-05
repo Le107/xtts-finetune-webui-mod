@@ -1,1 +1,1 @@
-put the .mp3 and .srt files with the same name here. To separate subtitles by roles, use Aegisub.
+Поместите сюда файлы .mp3 и .srt с одинаковым именем. Для разделения субтитров по ролям используйте Aegisub.
