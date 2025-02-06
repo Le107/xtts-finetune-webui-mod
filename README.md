@@ -12,3 +12,13 @@
 6. Создание датасета по субтитрам. (см. в finetune_models)
 
 Установка: скопировать всё с заменой на установленный репозиторий от daswer123 (daswer123/xtts-finetune-webui)
+
+
+Не работает с torch cuda из ошибки https://github.com/SYSTRAN/faster-whisper/issues/42. Поэтому в коде изменено float16 на float32
+```docker
+                        # Detect compute type 
+                        if torch.cuda.is_available():
+                            compute_type = "float32"
+                        else:
+                            compute_type = "float32"
+```
