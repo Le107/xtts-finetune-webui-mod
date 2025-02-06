@@ -6,4 +6,4 @@ pip uninstall torch torchaudio
 pip install torch torchaudio
 pip install -r .\requirements.txt
 
-python xtts_demo.py
+cmd
