@@ -10,3 +10,5 @@
     "use_grad_scaler": true,
     "use_noise_augment": true
 6. Создание датасета по субтитрам. (см. в finetune_models)
+
+Установка: скопировать всё с заменой на реп от daswer123
