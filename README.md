@@ -11,4 +11,4 @@
     "use_noise_augment": true
 6. Создание датасета по субтитрам. (см. в finetune_models)
 
-Установка: скопировать всё с заменой на репозиторий от daswer123 (daswer123/xtts-finetune-webui)
+Установка: скопировать всё с заменой на установленный репозиторий от daswer123 (daswer123/xtts-finetune-webui)
