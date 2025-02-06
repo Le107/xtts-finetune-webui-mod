@@ -22,3 +22,9 @@
                         else:
                             compute_type = "float32"
 ```
+Это только Whisper, в остальном можно попробовать использовать install_gpu.bat и в коде сменить на float16 или int8
+
+                    if torch.cuda.is_available():
+                        compute_type = "int8"
+                    else:
+                        compute_type = "float32"
