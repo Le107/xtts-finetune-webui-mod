@@ -14,7 +14,7 @@
 Установка: скопировать всё с заменой на установленный репозиторий от daswer123 (daswer123/xtts-finetune-webui)
 
 
-Не работает с torch cuda из ошибки https://github.com/daswer123/xtts-finetune-webui/issues/24 и https://github.com/SYSTRAN/faster-whisper/issues/42. Поэтому в коде xtts_demo.py изменено float16 на float32
+Не работает с torch cuda из ошибки https://github.com/daswer123/xtts-finetune-webui/issues/24 и https://github.com/SYSTRAN/faster-whisper/issues/42. Поэтому в коде xtts_demo.py изменено float16 на float32. При таком коде исползуйте install_cpu.bat
 ```docker
                         # Detect compute type 
                         if torch.cuda.is_available():
