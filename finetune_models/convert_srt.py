@@ -24,6 +24,9 @@ for item in Path('.').glob('*.srt'):
         print(result, file=open(res+"_conv.srt", 'a', encoding='utf-8'))
     os.rename (res, 'wavs')
     os.rename (res+'_conv.srt', 'Dialogs.txt')
-    shutil.rmtree('..\dataset\wavs')
+    try:
+        shutil.rmtree('..\dataset\wavs')
+    except:
+        pass
     shutil.move('wavs', '..\dataset\wavs')    
     shutil.move('Dialogs.txt', '..\Dialogs.txt')
