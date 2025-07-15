@@ -22,7 +22,7 @@
                         else:
                             compute_type = "float32"
 ```
-Это только Whisper, в остальном можно попробовать использовать install_gpu.bat и в коде сменить на float16 или int8
+Это только Whisper, в остальном можно попробовать использовать install_gpu.bat и в коде сменить на float16 или int8 (в этом разница xtts_demo_cpu.py и xtts_demo_gpu.py)
 ```docker
                     if torch.cuda.is_available():
                         compute_type = "int8"
