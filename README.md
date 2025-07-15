@@ -11,7 +11,7 @@
     "use_noise_augment": true
 6. Создание датасета по субтитрам. (см. в finetune_models)
 
-Установка: скопировать всё с заменой на установленный репозиторий от daswer123 (daswer123/xtts-finetune-webui) и еще добавить `ffmpeg.exe`
+Установка: скопировать всё с заменой на установленный репозиторий от daswer123 (daswer123/xtts-finetune-webui) и еще добавить `ffmpeg.exe` в корневую папку.
 
 
 Не работает с torch cuda из-за ошибки https://github.com/daswer123/xtts-finetune-webui/issues/24 и https://github.com/SYSTRAN/faster-whisper/issues/42. Поэтому в коде xtts_demo.py изменено float16 на float32. При таком коде исползуйте install_cpu.bat
