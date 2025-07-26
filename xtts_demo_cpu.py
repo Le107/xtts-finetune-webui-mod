@@ -98,7 +98,6 @@ def run_tts(lang, tts_text, speaker_audio_file, temperature, speed, length_penal
         os.makedirs("output")
     save_path=os.path.basename(speaker_audio_file)
     save_path=str(f'output\{save_path}')
-    print(save_path)
     torchaudio.save(save_path, out["wav"], 24000)
     audio = AudioSegment.from_file(speaker_audio_file)
     new_framerate = audio.frame_rate
@@ -154,14 +153,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--out_path",
         type=str,
-        help="Путь вывода (куда будут сохраняться данные и контрольные точки) По умолчанию: finetune_models/",
+        help="Путь вывода (куда будут сохраняться данные и контрольные точки) По умолчанию: output/",
         default=str(Path.cwd() / "finetune_models"),
     )
 
     parser.add_argument(
         "--num_epochs",
         type=int,
-        help="Количество эпох для тренировки. По умолчанию: 100",
+        help="Количество эпох для тренировки. По умолчанию: 10",
         default=100,
     )
     parser.add_argument(
@@ -174,7 +173,7 @@ if __name__ == "__main__":
         "--grad_acumm",
         type=int,
         help="Ступени накопления града. По умолчанию: 128",
-        default=1,
+        default=128,
     )
     parser.add_argument(
         "--max_audio_length",
@@ -545,7 +544,7 @@ if __name__ == "__main__":
                         ]
                     )
                     tts_text = gr.Textbox(
-                        label="Входной текст.",
+                        label="Входной текст:",
                         value="Эта модель звучит действительно хорошо.",
                     )
                     with gr.Accordion("Дополнительные настройки", open=False) as acr:
@@ -582,14 +581,14 @@ if __name__ == "__main__":
                             minimum=1,
                             maximum=100,
                             step=1,
-                            value=50,
+                            value=100,
                         )
                         top_p = gr.Slider(
                             label="top_p",
                             minimum=0,
                             maximum=1,
                             step=0.05,
-                            value=0.85,
+                            value=1,
                         )
                         sentence_split = gr.Checkbox(
                             label="Включить разделение текста",

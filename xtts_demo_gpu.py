@@ -581,14 +581,14 @@ if __name__ == "__main__":
                             minimum=1,
                             maximum=100,
                             step=1,
-                            value=50,
+                            value=100,
                         )
                         top_p = gr.Slider(
                             label="top_p",
                             minimum=0,
                             maximum=1,
                             step=0.05,
-                            value=0.85,
+                            value=1,
                         )
                         sentence_split = gr.Checkbox(
                             label="Включить разделение текста",
