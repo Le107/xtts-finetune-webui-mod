@@ -3,11 +3,13 @@ import re
 import shutil
 import subprocess
 import random
+import sys
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # --- НАСТРОЙКИ ---
 BASE_DIR = Path(__file__).parent.absolute()
-FFMPEG_PATH = str(BASE_DIR / "ffmpeg.exe") 
+FFMPEG_PATH = BASE_DIR / "ffmpeg.exe" 
 WORK_DIR = BASE_DIR / 'work'
 DATASET_DIR = BASE_DIR / 'dataset'
 WAVS_DIR = DATASET_DIR / 'wavs'
@@ -19,13 +21,16 @@ DIALOGS_FILE = BASE_DIR / 'Dialogs.txt'
 AUDIO_EXTENSIONS = ['.wav', '.mp3', '.ogg', '.flac', '.m4a']
 SRT_PROG = re.compile(r"([0-9:\.]+).+?([0-9:\.]+)")
 
-def check_lang_file():
+def check_env():
+    if not FFMPEG_PATH.exists():
+        print(f"!!! ОШИБКА: {FFMPEG_PATH.name} не найден в {BASE_DIR}")
+        sys.exit(1)
+    if not WORK_DIR.exists():
+        print(f"!!! ОШИБКА: Папка '{WORK_DIR.name}' не найдена.")
+        sys.exit(1)
     DATASET_DIR.mkdir(parents=True, exist_ok=True)
     if not LANG_FILE.exists():
         LANG_FILE.write_text("en", encoding='utf-8')
-    else:
-        current_lang = LANG_FILE.read_text(encoding='utf-8').strip()
-        print(f"--- Язык обучения: {current_lang} ---")
 
 def find_audio_source(srt_path):
     for ext in AUDIO_EXTENSIONS:
@@ -34,123 +39,103 @@ def find_audio_source(srt_path):
             return audio_path
     return None
 
-def process_srt_to_audio(srt_path):
+def process_single_srt(srt_path):
     in_file = find_audio_source(srt_path)
     if not in_file:
-        print(f"Ошибка: Аудиофайл для {srt_path.name} не найден.")
-        return
+        return srt_path.stem, None
 
     target_folder = srt_path.with_suffix('')
     target_folder.mkdir(parents=True, exist_ok=True)
     folder_name = target_folder.name
+    local_map = {}
 
-    with open(srt_path, "r", encoding='utf-8-sig') as srt_file:
-        lines = srt_file.readlines()
-        
+    with open(srt_path, "r", encoding='utf-8-sig') as f:
+        content = f.read().strip().split('\n')
+
     i = 0
-    while i < len(lines):
-        line = lines[i].strip()
+    while i < len(content):
+        line = content[i].strip()
         if line.isdigit():
-            out_file_idx = line
-            i += 1
-            if i < len(lines):
-                time_line = lines[i].strip().replace(",", ".")
+            idx = line.rjust(3, "0")
+            if i + 2 < len(content):
+                time_line = content[i+1].strip().replace(",", ".")
+                text = content[i+2].strip()
                 sm_match = SRT_PROG.match(time_line)
-                if sm_match:
+                
+                if sm_match and text:
                     ss, to = sm_match.group(1), sm_match.group(2)
-                    file_name = f"{folder_name}_{out_file_idx.rjust(3, '0')}.wav"
-                    output_path = target_folder / file_name
+                    entry_name = f"{folder_name}_{idx}"
+                    out_path = target_folder / f"{entry_name}.wav"
                     
-                    # Фильтр loudnorm нормализует громкость всех файлов к одному уровню
-                    cmd = [
-                        FFMPEG_PATH, "-loglevel", "quiet", "-y",
-                        "-i", str(in_file),
-                        "-ss", ss, "-to", to, 
-                        "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", # Нормализация
-                        "-f", "wav", str(output_path)
-                    ]
-                    try:
-                        subprocess.run(cmd, check=True)
-                    except Exception as e:
-                        print(f"Ошибка ffmpeg на файле {file_name}: {e}")
+                    cmd = [str(FFMPEG_PATH), "-loglevel", "quiet", "-y", "-i", str(in_file),
+                           "-ss", ss, "-to", to, "-f", "wav", str(out_path)]
+                    subprocess.run(cmd)
+                    local_map[entry_name] = text
+                i += 2
         i += 1
+    
+    for wav in target_folder.glob('*.wav'):
+        shutil.move(str(wav), str(WAVS_DIR / wav.name))
+    shutil.rmtree(target_folder)
+    return srt_path.stem, local_map
 
 def main():
-    if not WORK_DIR.exists():
-        print(f"Ошибка: Папка {WORK_DIR} не найдена!")
+    check_env()
+    if WAVS_DIR.exists(): shutil.rmtree(WAVS_DIR)
+    WAVS_DIR.mkdir(parents=True, exist_ok=True)
+    if DIALOGS_FILE.exists(): os.remove(DIALOGS_FILE)
+
+    srt_files = list(WORK_DIR.glob('*.srt'))
+    if not srt_files:
+        print("Нет .srt файлов в 'work'.")
         return
 
-    check_lang_file()
-
-    if WAVS_DIR.exists():
-        shutil.rmtree(WAVS_DIR)
-    WAVS_DIR.mkdir(parents=True, exist_ok=True)
+    total_files = len(srt_files)
+    print(f"--- Начинаю нарезку ({total_files} файлов) в 4 потока... ---")
     
-    if DIALOGS_FILE.exists():
-        os.remove(DIALOGS_FILE)
+    all_dialogs = {}
+    completed = 0
 
-    dialog_map = {}
-    srt_files = list(WORK_DIR.glob('*.srt'))
-
-    for srt_path in srt_files:
-        file_prefix = srt_path.stem
-        print(f"\nОбработка: {file_prefix}")
-
-        process_srt_to_audio(srt_path)
-
-        output_lines = []
-        with open(srt_path, "r", encoding='utf-8-sig') as fp:
-            lines = fp.read().strip().split('\n')
-            i = 0
-            while i < len(lines):
-                line = lines[i].strip()
-                if line.isdigit():
-                    idx = line.rjust(3, "0")
-                    if i + 2 < len(lines):
-                        text = lines[i + 2].strip()
-                        if text:
-                            entry_name = f"{file_prefix}_{idx}"
-                            output_lines.append(f"{entry_name}={text}")
-                            dialog_map[entry_name] = text
-                    i += 2
-                i += 1
+    # Используем as_completed для вывода прогресса по мере готовности
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        future_to_srt = {executor.submit(process_single_srt, srt): srt for srt in srt_files}
         
-        if output_lines:
-            result = '\n'.join(output_lines)
-            print(result)
-            with open(DIALOGS_FILE, 'a', encoding='utf-8') as f:
-                f.write(result + '\n')
+        for future in as_completed(future_to_srt):
+            completed += 1
+            prefix, res_map = future.result()
+            if res_map:
+                all_dialogs.update(res_map)
+                print(f"[{completed}/{total_files}] Завершен: {prefix}")
+            else:
+                print(f"[{completed}/{total_files}] Ошибка (нет аудио): {prefix}")
 
-        source_folder = srt_path.with_suffix('')
-        if source_folder.exists() and source_folder.is_dir():
-            for wav_file in source_folder.glob('*.wav'):
-                shutil.move(str(wav_file), str(WAVS_DIR / wav_file.name))
-            shutil.rmtree(source_folder)
+    # Запись Dialogs.txt
+    with open(DIALOGS_FILE, 'w', encoding='utf-8') as f:
+        # Сортируем ключи, чтобы в файле был порядок
+        for k in sorted(all_dialogs.keys()):
+            f.write(f"{k}={all_dialogs[k]}\n")
 
     print("\n--- Генерация CSV метаданных ---")
     header = "audio_file|text|speaker_name\n"
     TRAIN_CSV.write_text(header, encoding='utf-8')
     EVAL_CSV.write_text(header, encoding='utf-8')
 
-    valid_wavs = [w for w in WAVS_DIR.glob('*.wav') if w.stem in dialog_map]
-    if not valid_wavs:
-        print("Ошибка: Аудиофайлы не созданы.")
-        return
-
+    valid_wavs = list(WAVS_DIR.glob('*.wav'))
     random.shuffle(valid_wavs)
     eval_count = max(1, int(len(valid_wavs) * 0.15))
-    
-    eval_files = valid_wavs[:eval_count]
-    train_files = valid_wavs[eval_count:]
 
-    for csv_path, files, label in [(TRAIN_CSV, train_files, "TRAIN"), (EVAL_CSV, eval_files, "EVAL")]:
-        with open(csv_path, 'a', encoding='utf-8') as f:
+    def write_csv(files, path):
+        with open(path, 'a', encoding='utf-8') as f:
             for wav in files:
-                text = dialog_map[wav.stem]
-                f.write(f"wavs/{wav.name}|{text}|coqui\n")
-                print(f"wavs/{wav.name} [{label}]")
+                if wav.stem in all_dialogs:
+                    f.write(f"wavs/{wav.name}|{all_dialogs[wav.stem]}|coqui\n")
 
-    print(f"\nГотово! Все файлы нормализованы и сохранены в UTF-8.")
+    write_csv(valid_wavs[:eval_count], EVAL_CSV)
+    write_csv(valid_wavs[eval_count:], TRAIN_CSV)
+
+    print(f"Готово! Всего фрагментов: {len(valid_wavs)}")
+    print(f"Результаты в папке: {DATASET_DIR.name}")
 
 if __name__ == "__main__":
     main()
+
