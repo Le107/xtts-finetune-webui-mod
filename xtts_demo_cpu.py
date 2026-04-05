@@ -160,8 +160,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_epochs",
         type=int,
-        help="Количество эпох для тренировки. По умолчанию: 10",
-        default=30,
+        help="Количество эпох для тренировки. По умолчанию: 100",
+        default=100,
     )
     parser.add_argument(
         "--batch_size",
