@@ -9,7 +9,8 @@
     "use_speaker_weighted_sampler": true,
     "use_grad_scaler": true,
     "use_noise_augment": true
-6. Создание датасета по субтитрам. (см. в finetune_models)
+6. Лучшая модель сохраняется в конце обучения, а чекпоинты каждые 5 эпох
+7. Создание датасета по субтитрам. (см. в finetune_models)
 
 Установка: скопировать всё с заменой на установленный репозиторий от daswer123 (daswer123/xtts-finetune-webui) и еще добавить `ffmpeg.exe` в корневую папку.
 
