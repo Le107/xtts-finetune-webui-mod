@@ -1,4 +1,2 @@
-python splitAudioBySrt.py
-python convert_srt.py
-python create_dataset.py
+python Sub_to_dataset.py
 cmd
