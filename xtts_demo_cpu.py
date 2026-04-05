@@ -161,7 +161,7 @@ if __name__ == "__main__":
         "--num_epochs",
         type=int,
         help="Количество эпох для тренировки. По умолчанию: 10",
-        default=100,
+        default=30,
     )
     parser.add_argument(
         "--batch_size",
@@ -361,9 +361,9 @@ if __name__ == "__main__":
             train_btn = gr.Button(value="Шаг 2 - Проведение обучения")
             optimize_model_btn = gr.Button(value="Шаг 2.5 - Оптимизация модели")
             
-            def train_model(custom_model,version,language, train_csv, eval_csv, num_epochs, batch_size, grad_acumm, output_path, max_audio_length):
+            def train_model(custom_model,version,language, train_csv, eval_csv, num_epochs, batch_size, grad_acumm, output_path, max_audio_length, checkpoint_at_epoch_end=False):
                 clear_gpu_cache()
-
+                checkpoint_at_epoch_end = False
                 run_dir = Path(output_path) / "run"
 
                 # # Remove train dir
@@ -401,7 +401,10 @@ if __name__ == "__main__":
 
                 ft_xtts_checkpoint = os.path.join(exp_path, "best_model.pth")
 
-                shutil.copy(ft_xtts_checkpoint, ready_dir / "unoptimize_model.pth")
+                if os.path.exists(ft_xtts_checkpoint):
+                    shutil.copy(ft_xtts_checkpoint, ready_dir / "unoptimize_model.pth")
+                else:
+                    print("ВНИМАНИЕ: best_model.pth не найден! Проверьте настройки сохранения.")
                 # os.remove(ft_xtts_checkpoint)
 
                 ft_xtts_checkpoint = os.path.join(ready_dir, "unoptimize_model.pth")
