@@ -16,23 +16,28 @@ EVAL_CSV = DATASET_DIR / 'metadata_eval.csv'
 LANG_FILE = DATASET_DIR / 'lang.txt'
 DIALOGS_FILE = BASE_DIR / 'Dialogs.txt'
 
+AUDIO_EXTENSIONS = ['.wav', '.mp3', '.ogg', '.flac', '.m4a']
 SRT_PROG = re.compile(r"([0-9:\.]+).+?([0-9:\.]+)")
 
 def check_lang_file():
-    """Проверяет наличие lang.txt, создает если отсутствует."""
     DATASET_DIR.mkdir(parents=True, exist_ok=True)
     if not LANG_FILE.exists():
-        print(f"--- Файл {LANG_FILE.name} не найден. Создаю (по умолчанию: en) ---")
         LANG_FILE.write_text("en", encoding='utf-8')
     else:
         current_lang = LANG_FILE.read_text(encoding='utf-8').strip()
         print(f"--- Язык обучения: {current_lang} ---")
 
+def find_audio_source(srt_path):
+    for ext in AUDIO_EXTENSIONS:
+        audio_path = srt_path.with_suffix(ext)
+        if audio_path.exists():
+            return audio_path
+    return None
+
 def process_srt_to_audio(srt_path):
-    """Нарезка аудио по таймкодам из SRT."""
-    in_file = srt_path.with_suffix('.wav')
-    if not in_file.exists():
-        print(f"Ошибка: Исходный аудиофайл {in_file.name} не найден в {WORK_DIR}")
+    in_file = find_audio_source(srt_path)
+    if not in_file:
+        print(f"Ошибка: Аудиофайл для {srt_path.name} не найден.")
         return
 
     target_folder = srt_path.with_suffix('')
@@ -56,10 +61,12 @@ def process_srt_to_audio(srt_path):
                     file_name = f"{folder_name}_{out_file_idx.rjust(3, '0')}.wav"
                     output_path = target_folder / file_name
                     
+                    # Фильтр loudnorm нормализует громкость всех файлов к одному уровню
                     cmd = [
                         FFMPEG_PATH, "-loglevel", "quiet", "-y",
                         "-i", str(in_file),
                         "-ss", ss, "-to", to, 
+                        "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", # Нормализация
                         "-f", "wav", str(output_path)
                     ]
                     try:
@@ -79,7 +86,6 @@ def main():
         shutil.rmtree(WAVS_DIR)
     WAVS_DIR.mkdir(parents=True, exist_ok=True)
     
-    # Очищаем старый Dialogs.txt
     if DIALOGS_FILE.exists():
         os.remove(DIALOGS_FILE)
 
@@ -123,13 +129,12 @@ def main():
 
     print("\n--- Генерация CSV метаданных ---")
     header = "audio_file|text|speaker_name\n"
-    # Пишем заголовки с UTF-8
     TRAIN_CSV.write_text(header, encoding='utf-8')
     EVAL_CSV.write_text(header, encoding='utf-8')
 
     valid_wavs = [w for w in WAVS_DIR.glob('*.wav') if w.stem in dialog_map]
     if not valid_wavs:
-        print("Ошибка: Аудиофайлы не созданы. Проверьте ffmpeg.exe.")
+        print("Ошибка: Аудиофайлы не созданы.")
         return
 
     random.shuffle(valid_wavs)
@@ -138,7 +143,6 @@ def main():
     eval_files = valid_wavs[:eval_count]
     train_files = valid_wavs[eval_count:]
 
-    # Запись CSV с UTF-8
     for csv_path, files, label in [(TRAIN_CSV, train_files, "TRAIN"), (EVAL_CSV, eval_files, "EVAL")]:
         with open(csv_path, 'a', encoding='utf-8') as f:
             for wav in files:
@@ -146,7 +150,7 @@ def main():
                 f.write(f"wavs/{wav.name}|{text}|coqui\n")
                 print(f"wavs/{wav.name} [{label}]")
 
-    print(f"\nГотово! Кодировка UTF-8 применена ко всем файлам.")
+    print(f"\nГотово! Все файлы нормализованы и сохранены в UTF-8.")
 
 if __name__ == "__main__":
     main()
