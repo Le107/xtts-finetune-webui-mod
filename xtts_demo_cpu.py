@@ -344,7 +344,7 @@ if __name__ == "__main__":
                 value=args.max_audio_length,
             )
             clear_train_data = gr.Dropdown(
-                label="Очистить данные поезда, вы удалите выбранную папку после оптимизации",
+                label="Очистить данные тренировки, вы удалите выбранную папку после оптимизации",
                 value="run",
                 choices=[
                     "none",
