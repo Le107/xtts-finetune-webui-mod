@@ -7,6 +7,7 @@ from pathlib import Path
 import os
 import shutil
 import glob
+import re
 
 import gradio as gr
 import librosa.display
@@ -107,7 +108,101 @@ def run_tts(lang, tts_text, speaker_audio_file, temperature, speed, length_penal
 
     return "Речь сгенерирована!", save_path, speaker_audio_file
 
+def mass_predict_tts(dialogs_file, speaker_wav_dir, lang, temperature, speed, length_penalty, repetition_penalty, top_k, top_p, sentence_split, use_config):
+    global XTTS_MODEL
+    if XTTS_MODEL is None:
+        return "Ошибка: Сначала загрузите модель (Шаг 3)!"
+    
+    dialogs_path = Path(args.out_path) / dialogs_file
+    if not dialogs_path.exists():
+        return f"Ошибка: Файл {dialogs_file} не найден в {args.out_path}"
 
+    mass_out_dir = Path("translated_output")
+    mass_out_dir.mkdir(parents=True, exist_ok=True)
+    wav_dir = Path(args.out_path) / speaker_wav_dir
+    
+    with open(dialogs_path, "r", encoding="utf-8") as f:
+        lines = [l.strip() for l in f.readlines() if "=" in l]
+
+    total = len(lines)
+    processed = 0
+    print(f"--- Начало массовой озвучки ({total} фразы) ---")
+
+    for line in lines:
+        line_id, raw_text = line.split("=", 1)
+
+        # --- ОЧИСТКА ТЕКСТА ---
+        # 1. Удаляем кавычки, скобки и спецсимволы
+        tts_text = raw_text.translate(str.maketrans('', '', '"\'«»“”()[]{}*<>'))
+        
+        # 2. Правим тире и убираем лишние пробелы
+        tts_text = tts_text.replace('--', ' — ').replace(' - ', ' — ')
+        tts_text = re.sub(r'\s+', ' ', tts_text)
+        
+        # 3. Убираем точку в конце (Борьба с "Point")
+        tts_text = tts_text.strip()
+        if tts_text.endswith('.') and len(tts_text) > 3:
+            tts_text = tts_text[:-1]
+            
+        # 4. Финальный пробел для мягкого завершения фразы
+        tts_text = tts_text.strip() + " "
+        
+        speaker_audio_file = str(wav_dir / f"{line_id}.wav")
+        if not os.path.exists(speaker_audio_file):
+            print(f" [!] Пропуск {line_id}: референс не найден")
+            continue
+
+        gpt_cond_latent, speaker_embedding = XTTS_MODEL.get_conditioning_latents(
+            audio_path=speaker_audio_file, 
+            gpt_cond_len=XTTS_MODEL.config.gpt_cond_len, 
+            max_ref_length=XTTS_MODEL.config.max_ref_len, 
+            sound_norm_refs=XTTS_MODEL.config.sound_norm_refs
+        )
+        
+        if use_config:
+            out = XTTS_MODEL.inference(
+                text=tts_text, language=lang,
+                gpt_cond_latent=gpt_cond_latent, speaker_embedding=speaker_embedding,
+                temperature=XTTS_MODEL.config.temperature, speed=XTTS_MODEL.config.speed,
+                length_penalty=XTTS_MODEL.config.length_penalty,
+                repetition_penalty=XTTS_MODEL.config.repetition_penalty,
+                top_k=XTTS_MODEL.config.top_k, top_p=XTTS_MODEL.config.top_p,
+                enable_text_splitting=True
+            )
+        else:
+            out = XTTS_MODEL.inference(
+                text=tts_text, language=lang,
+                gpt_cond_latent=gpt_cond_latent, speaker_embedding=speaker_embedding,
+                temperature=temperature, speed=speed,
+                length_penalty=length_penalty, repetition_penalty=float(repetition_penalty),
+                top_k=top_k, top_p=top_p, enable_text_splitting=sentence_split
+            )
+
+        out["wav"] = torch.tensor(out["wav"]).unsqueeze(0)
+        save_path = str(mass_out_dir / f"{line_id}.wav")
+        torchaudio.save(save_path, out["wav"], 24000)
+        
+        try:
+            ref_audio = AudioSegment.from_file(speaker_audio_file)
+            gen_audio = AudioSegment.from_file(save_path)
+            new_audio = gen_audio.set_frame_rate(ref_audio.frame_rate)
+            new_audio.export(save_path, format="wav")
+        except Exception as e:
+            print(f" [!] Ошибка частоты для {line_id}: {e}")
+
+        processed += 1
+        print(f"[{processed}/{total}] Готово: {line_id}")
+
+    return f"Массовая озвучка завершена! Обработано файлов: {processed}. Проверьте папку translated_output."
+
+def update_dialogs():
+    base_path = Path(args.out_path)
+    files = [f.name for f in base_path.glob("Dialogs*.txt")]
+    # Сортировка: Dialogs.txt всегда сверху
+    files.sort(key=lambda x: (x != "Dialogs.txt", x))    
+    # Возвращаем обновление с новым списком
+    return gr.update(choices=files)
+        
 def load_params_tts(out_path,version):
     
     out_path = Path(out_path)
@@ -361,9 +456,8 @@ if __name__ == "__main__":
             train_btn = gr.Button(value="Шаг 2 - Проведение обучения")
             optimize_model_btn = gr.Button(value="Шаг 2.5 - Оптимизация модели")
             
-            def train_model(custom_model,version,language, train_csv, eval_csv, num_epochs, batch_size, grad_acumm, output_path, max_audio_length, checkpoint_at_epoch_end=False):
+            def train_model(custom_model,version,language, train_csv, eval_csv, num_epochs, batch_size, grad_acumm, output_path, max_audio_length):
                 clear_gpu_cache()
-                checkpoint_at_epoch_end = False
                 run_dir = Path(output_path) / "run"
 
                 # # Remove train dir
@@ -609,7 +703,29 @@ if __name__ == "__main__":
                     )
                     tts_output_audio = gr.Audio(label="Сгенерированное аудио.")
                     reference_audio = gr.Audio(label="Использованный эталонный звук.")
+                    
+                with gr.Column() as col4:
+                    gr.Markdown("### Массовая озвучка")
+                    files = [f.name for f in Path(args.out_path).glob("Dialogs*.txt")]
+                    
+                    with gr.Row():
+                        dialogs_dropdown = gr.Dropdown(
+                            label="Файл диалогов:",
+                            choices=files,
+                            value="Dialogs.txt",
+                            interactive=True # Явно разрешаем взаимодействие
+                        )
+                        
+                    wavs_folder_input = gr.Textbox(
+                        label="Папка с референсами (оригиналами):",
+                        value="dataset/wavs",
+                    )
+                    mass_tts_btn = gr.Button(value="ЗАПУСТИТЬ МАССОВУЮ ОЗВУЧКУ", variant="primary")
+                    mass_status = gr.Label(label="Статус:")
 
+                    # Связываем новую кнопку с функцией обновления
+                    dialogs_dropdown.select(fn=update_dialogs, outputs=dialogs_dropdown)
+                    
             prompt_compute_btn.click(
                 fn=preprocess_dataset,
                 inputs=[
@@ -704,6 +820,16 @@ if __name__ == "__main__":
                     ],
                 outputs=[progress_load,xtts_checkpoint,xtts_config,xtts_vocab,xtts_speaker,speaker_reference_audio],
             )
+            
+            mass_tts_btn.click(
+                fn=mass_predict_tts,
+                inputs=[
+                    dialogs_dropdown, wavs_folder_input, tts_language,
+                    temperature, speed, length_penalty, repetition_penalty,
+                    top_k, top_p, sentence_split, use_config
+                ],
+                outputs=mass_status
+            )            
 
     demo.launch(
         server_name="127.0.0.1",
