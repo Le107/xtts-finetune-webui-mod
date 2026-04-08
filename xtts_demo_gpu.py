@@ -496,7 +496,7 @@ if __name__ == "__main__":
                 ft_xtts_checkpoint = os.path.join(exp_path, "best_model.pth")
 
                 if os.path.exists(ft_xtts_checkpoint):
-                    shutil.copy(ft_xtts_checkpoint, ready_dir / "unoptimize_model.pth")
+                    shutil.move(ft_xtts_checkpoint, ready_dir / "unoptimize_model.pth")
                 else:
                     print("ВНИМАНИЕ: best_model.pth не найден! Проверьте настройки сохранения.")
                 # os.remove(ft_xtts_checkpoint)
