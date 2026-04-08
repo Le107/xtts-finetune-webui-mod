@@ -126,7 +126,7 @@ def mass_predict_tts(dialogs_file, speaker_wav_dir, lang, temperature, speed, le
 
     total = len(lines)
     processed = 0
-    print(f"--- Начало массовой озвучки ({total} фразы) ---")
+    print(f"--- Начало массовой озвучки (Всего фраз: {total}) ---")
 
     for line in lines:
         line_id, raw_text = line.split("=", 1)
@@ -191,7 +191,7 @@ def mass_predict_tts(dialogs_file, speaker_wav_dir, lang, temperature, speed, le
             print(f" [!] Ошибка частоты для {line_id}: {e}")
 
         processed += 1
-        print(f"[{processed}/{total}] Готово: {line_id}")
+        print(f"[{processed}/{total}] Готово: {line_id}, Текст: {tts_text}")
 
     return f"Массовая озвучка завершена! Обработано файлов: {processed}. Проверьте папку translated_output."
 
