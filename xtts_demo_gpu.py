@@ -185,10 +185,10 @@ def mass_predict_tts(dialogs_file, speaker_wav_dir, lang, temperature, speed, le
         try:
             ref_audio = AudioSegment.from_file(speaker_audio_file)
             gen_audio = AudioSegment.from_file(save_path)
-            new_audio = gen_audio.set_frame_rate(ref_audio.frame_rate)
+            new_audio = gen_audio.set_frame_rate(ref_audio.frame_rate).set_channels(ref_audio.channels)
             new_audio.export(save_path, format="wav")
         except Exception as e:
-            print(f" [!] Ошибка частоты для {line_id}: {e}")
+            print(f" [!] Ошибка обработки аудио для {line_id}: {e}")
 
         processed += 1
         print(f"[{processed}/{total}] Готово: {line_id}, Текст: {tts_text}")
