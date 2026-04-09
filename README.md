@@ -16,7 +16,7 @@
 10. Добавлен пакетный способ генерации, где вместо reference.wav(эталоный звук динамика) файл берет из датасета, а текст с `Dialogs.txt`(или `Dialogs_*.txt`, по выбору), и сохраняет в папку `translated_output`.
 11. Добавлен скрипт `add_stress_manual.py`, и небольшой словарь `custom_dict.txt`. В словарь можно добавлять слова с правильным удареним на гласные, а скрипт, с помщью словаря, правит `Dialogs_ru.txt` и сохраняет отдельно `Dialogs_ru_stressed.txt` (см. в finetune_models).
 
-Установка: скопировать всё с заменой на установленный репозиторий от daswer123 (daswer123/xtts-finetune-webui) и еще добавить `ffmpeg.exe` в корневую папку.
+Установка: скопировать всё с заменой на установленный репозиторий от daswer123 (daswer123/xtts-finetune-webui) и еще добавить `ffmpeg.exe` в корневую папку. Можно установить от сюда (`install_cpu.bat` и `install_gpu.bat`), но перед установкой убедитесь, что у вас отсутствуют(удалены) папки `TTS` и `trainer` по пути `..\venv\Lib\site-packages\`, потом проводите установку, после установки копируйте папку `venv` из этого репо поверх с заменой.
 
 
 Не работает с torch cuda из-за ошибки https://github.com/daswer123/xtts-finetune-webui/issues/24 и https://github.com/SYSTRAN/faster-whisper/issues/42. Поэтому в коде xtts_demo.py изменено float16 на float32. При таком коде исползуйте install_cpu.bat
