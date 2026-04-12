@@ -476,7 +476,7 @@ if __name__ == "__main__":
                 
                 # Подготовка переменных перед циклом
                 current_custom_model = custom_model
-                max_attempts = 3
+                max_attempts = 10
                 dataset_path = Path(output_path) / "dataset"
                 # Вычисляем длину в сэмплах ОДИН раз здесь, чтобы не умножать в цикле
                 max_audio_length_samples = int(max_audio_length * 22050)
