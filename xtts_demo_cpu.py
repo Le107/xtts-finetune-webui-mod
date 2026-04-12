@@ -8,6 +8,9 @@ import os
 import shutil
 import glob
 import re
+import time
+import pandas as pd
+from sklearn.model_selection import train_test_split
 
 import gradio as gr
 import librosa.display
@@ -458,7 +461,7 @@ if __name__ == "__main__":
             def train_model(custom_model, version, language, train_csv, eval_csv, num_epochs, batch_size, grad_acumm, output_path, max_audio_length, clear_train_data):
                 clear_gpu_cache()
                 
-                # Проверка языка (твой оригинальный код)
+                # Проверка языка
                 lang_file_path = Path(output_path) / "dataset" / "lang.txt"
                 current_language = None
                 if lang_file_path.exists():
@@ -470,60 +473,103 @@ if __name__ == "__main__":
                         
                 if not train_csv or not eval_csv:
                     return "Ошибка: Установите Train CSV и Eval CSV!", "", "", "", ""
+                
+                # Подготовка переменных перед циклом
+                current_custom_model = custom_model
+                max_attempts = 3
+                dataset_path = Path(output_path) / "dataset"
+                # Вычисляем длину в сэмплах ОДИН раз здесь, чтобы не умножать в цикле
+                max_audio_length_samples = int(max_audio_length * 22050)
+                
+                # Переменные для финального возврата
+                final_status = "Обучение завершено!"
+                
+                for i in range(max_attempts):
+                    print(f"--- Итерация обучения {i+1}/{max_attempts} ---")
+                    
+                    # Перемешивание данных (начиная со второй итерации)
+                    if i > 0:
+                        df_train = pd.read_csv(train_csv, sep='|')
+                        df_eval = pd.read_csv(eval_csv, sep='|')
+                        df_all = pd.concat([df_train, df_eval])
+            
+                        # Вычисляем количество для теста (минимум 1 запись)
+                        eval_count = max(1, int(len(df_all) * 0.15))
+                        
+                        # Перемешиваем и делим
+                        new_train, new_eval = train_test_split(df_all, test_size=eval_count, random_state=42)
+                        new_train.to_csv(train_csv, index=False, sep='|')
+                        new_eval.to_csv(eval_csv, index=False, sep='|')
+                        print(f" [+] Данные перемешаны для итерации {i+1}. Eval содержит {eval_count} строк.")
 
-                try:
-                    max_audio_length = int(max_audio_length * 22050)
-                    # ЗАПУСК ТРЕНИРОВКИ
-                    speaker_xtts_path, config_path, original_xtts_checkpoint, vocab_file, exp_path, speaker_wav = train_gpt(
-                        custom_model, version, language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv, 
-                        output_path=output_path, max_audio_length=max_audio_length
-                    )
-                except:
-                    traceback.print_exc()
-                    return f"Ошибка тренировки: {traceback.format_exc()}", "", "", "", ""
+                    try:
+                        max_audio_length = max_audio_length_samples
+                        # ЗАПУСК ТРЕНИРОВКИ (внутри цикла)
+                        speaker_xtts_path, config_path, original_xtts_checkpoint, vocab_file, exp_path, speaker_wav = train_gpt(
+                            custom_model, version, language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv, 
+                            output_path=output_path, max_audio_length=max_audio_length
+                        )
+                    except Exception as e:
+                        traceback.print_exc()
+                        return f"Ошибка тренировки на итерации {i+1}: {traceback.format_exc()}", "", "", "", ""
+                        
+                    loss_file_path = os.path.join(exp_path, "last_avg_loss.txt")
+                    avg_loss = 4.0  # Значение по умолчанию (если файл не найдется)
+                
+                    if os.path.exists(loss_file_path):
+                        with open(loss_file_path, "r") as f:
+                            avg_loss = float(f.read().strip())
+                        print(f" [📊] Считан Loss из файла: {avg_loss}")
+                    else:
+                        print(f" [!] Файл {loss_file_path} не найден. Используется Loss по умолчанию: 4.0")
 
-                # --- ЛОГИКА ПЕРЕНОСА И ОПТИМИЗАЦИИ ---
-                import shutil
-                ready_dir = Path(output_path) / "ready"
-                ready_dir.mkdir(parents=True, exist_ok=True)
+                    # --- ЛОГИКА ПЕРЕНОСА И ОБНОВЛЕНИЯ ПУТИ ---
+                    ready_dir = Path(output_path) / "ready"
+                    ready_dir.mkdir(parents=True, exist_ok=True)
 
-                # 1. Забираем оптимизированную модель из папки эксперимента (которую сделал trainer.py)
-                optimized_model_src = os.path.join(exp_path, "model.pth")
-                ft_xtts_checkpoint = ready_dir / "model.pth"
+                    optimized_model_src = os.path.join(exp_path, "model.pth")
+                    ft_xtts_checkpoint = ready_dir / "model.pth"
 
-                if os.path.exists(optimized_model_src):
-                    shutil.move(optimized_model_src, ft_xtts_checkpoint)
-                    print(f" [+] Оптимизированная модель перенесена в: {ft_xtts_checkpoint}")
-                else:
-                    print(f" [!] ВНИМАНИЕ: Тренер не оставил model.pth в {exp_path}")
+                    if os.path.exists(optimized_model_src):
+                        shutil.move(optimized_model_src, ft_xtts_checkpoint)
+                        # Теперь эта модель станет базовой для следующего шага
+                        current_custom_model = str(ft_xtts_checkpoint)
+                        print(f" [+] Модель сохранена в: {ft_xtts_checkpoint}")
+                    else:
+                        print(f" [!] ВНИМАНИЕ: Файл model.pth не найден в {exp_path}")
 
-                # 2. Копируем референс (reference.wav)
+                    # Проверка Loss
+                    if float(avg_loss) < 3:
+                        print(f" [✅] Цель достигнута! Финальный Loss: {avg_loss}")
+                        break 
+                    else:
+                        if i < max_attempts - 1:
+                            print(f" [♻️] Loss {avg_loss:.4f} > 3. Запуск следующей итерации...")
+                            clear_gpu_cache()
+                        else:
+                            print(f" [!] Попытки исчерпаны. Остановка на Loss: {avg_loss:.4f}")
+
+                # --- ФИНАЛИЗАЦИЯ (ВНЕ ЦИКЛА) ---
+                
+                # Копируем референс
                 speaker_reference_path = Path(speaker_wav)
                 speaker_reference_new_path = ready_dir / "reference.wav"
                 shutil.copy(speaker_reference_path, speaker_reference_new_path)
 
-                print("Обучение модели закончено!")
-                
-                # 3. ОЧИСТКА ПО ЗАПРОСУ
-                # Очистка датасета
+                # Очистка данных
                 if clear_train_data in ["dataset", "all"]:
-                    dataset_dir = Path(output_path) / "dataset"
-                    if dataset_dir.exists():
-                        shutil.rmtree(dataset_dir, ignore_errors=True)
+                    if dataset_path.exists():
+                        shutil.rmtree(dataset_path, ignore_errors=True)
                         print(f" [🗑️] Папка датасета удалена.")
 
-                # Очистка папки run
                 if clear_train_data in ["run", "all"]:
                     run_dir = Path(output_path) / "run"
                     if run_dir.exists():
-                        # Небольшая пауза, чтобы Windows отпустила файлы
-                        import time
                         time.sleep(1)
                         shutil.rmtree(run_dir, ignore_errors=True)
                         print(f" [🗑️] Папка временных файлов (run) удалена.")
 
                 return "Обучение завершено!", config_path, vocab_file, str(ft_xtts_checkpoint), speaker_xtts_path, str(speaker_reference_new_path)
-
 
             def load_params(out_path):
                 path_output = Path(out_path)
@@ -666,7 +712,7 @@ if __name__ == "__main__":
                     )
                     tts_output_audio = gr.Audio(label="Сгенерированное аудио.")
                     reference_audio = gr.Audio(label="Использованный эталонный звук.")
-
+                    
                 with gr.Column() as col4:
                     gr.Markdown("### Массовая озвучка")
                     files = [f.name for f in Path(args.out_path).glob("Dialogs*.txt")]
@@ -775,7 +821,7 @@ if __name__ == "__main__":
                     ],
                 outputs=[progress_load,xtts_checkpoint,xtts_config,xtts_vocab,xtts_speaker,speaker_reference_audio],
             )
-
+            
             mass_tts_btn.click(
                 fn=mass_predict_tts,
                 inputs=[
