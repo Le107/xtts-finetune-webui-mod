@@ -439,7 +439,7 @@ if __name__ == "__main__":
                 value=args.max_audio_length,
             )
             clear_train_data = gr.Dropdown(
-                label="Очистить данные тренировки, вы удалите выбранную папку после оптимизации",
+                label="Очистить данные тренировки, удалятся папки полсе тренировки",
                 value="run",
                 choices=[
                     "none",
@@ -454,113 +454,76 @@ if __name__ == "__main__":
 
             # demo.load(read_logs, None, logs_tts_train, every=1)
             train_btn = gr.Button(value="Шаг 2 - Проведение обучения")
-            optimize_model_btn = gr.Button(value="Шаг 2.5 - Оптимизация модели")
-            
-            def train_model(custom_model,version,language, train_csv, eval_csv, num_epochs, batch_size, grad_acumm, output_path, max_audio_length):
+
+            def train_model(custom_model, version, language, train_csv, eval_csv, num_epochs, batch_size, grad_acumm, output_path, max_audio_length, clear_train_data):
                 clear_gpu_cache()
-                run_dir = Path(output_path) / "run"
-
-                # # Remove train dir
-                if run_dir.exists():
-                    os.remove(run_dir)
                 
-                # Check if the dataset language matches the language you specified 
+                # Проверка языка (твой оригинальный код)
                 lang_file_path = Path(output_path) / "dataset" / "lang.txt"
-
-                # Check if lang.txt already exists and contains a different language
                 current_language = None
                 if lang_file_path.exists():
                     with open(lang_file_path, 'r', encoding='utf-8') as existing_lang_file:
                         current_language = existing_lang_file.read().strip()
                         if current_language != language:
-                            print("Язык, подготовленный для набора данных, не соответствует указанному языку. Измените язык на язык, указанный в наборе данных")
+                            print("Язык датасета не совпадает, переключаюсь на:", current_language)
                             language = current_language
                         
                 if not train_csv or not eval_csv:
-                    return "Необходимо выполнить шаг обработки данных или вручную установить поля Train CSV и Eval CSV!", "", "", "", ""
+                    return "Ошибка: Установите Train CSV и Eval CSV!", "", "", "", ""
+
                 try:
-                    # convert seconds to waveform frames
                     max_audio_length = int(max_audio_length * 22050)
-                    speaker_xtts_path,config_path, original_xtts_checkpoint, vocab_file, exp_path, speaker_wav = train_gpt(custom_model,version,language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv, output_path=output_path, max_audio_length=max_audio_length)
+                    # ЗАПУСК ТРЕНИРОВКИ
+                    speaker_xtts_path, config_path, original_xtts_checkpoint, vocab_file, exp_path, speaker_wav = train_gpt(
+                        custom_model, version, language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv, 
+                        output_path=output_path, max_audio_length=max_audio_length
+                    )
                 except:
                     traceback.print_exc()
-                    error = traceback.format_exc()
-                    return f"Тренировка прервана из-за ошибки!! Проверьте консоль, чтобы получить полное сообщение об ошибке !\n Сводка об ошибке: {error}", "", "", "", ""
+                    return f"Ошибка тренировки: {traceback.format_exc()}", "", "", "", ""
 
-                # copy original files to avoid parameters changes issues
-                # os.system(f"cp {config_path} {exp_path}")
-                # os.system(f"cp {vocab_file} {exp_path}")
-                
+                # --- ЛОГИКА ПЕРЕНОСА И ОПТИМИЗАЦИИ ---
+                import shutil
                 ready_dir = Path(output_path) / "ready"
+                ready_dir.mkdir(parents=True, exist_ok=True)
 
-                ft_xtts_checkpoint = os.path.join(exp_path, "best_model.pth")
+                # 1. Забираем оптимизированную модель из папки эксперимента (которую сделал trainer.py)
+                optimized_model_src = os.path.join(exp_path, "model.pth")
+                ft_xtts_checkpoint = ready_dir / "model.pth"
 
-                if os.path.exists(ft_xtts_checkpoint):
-                    shutil.move(ft_xtts_checkpoint, ready_dir / "unoptimize_model.pth")
+                if os.path.exists(optimized_model_src):
+                    shutil.move(optimized_model_src, ft_xtts_checkpoint)
+                    print(f" [+] Оптимизированная модель перенесена в: {ft_xtts_checkpoint}")
                 else:
-                    print("ВНИМАНИЕ: best_model.pth не найден! Проверьте настройки сохранения.")
-                # os.remove(ft_xtts_checkpoint)
+                    print(f" [!] ВНИМАНИЕ: Тренер не оставил model.pth в {exp_path}")
 
-                ft_xtts_checkpoint = os.path.join(ready_dir, "unoptimize_model.pth")
-
-                # Reference
-                # Move reference audio to output folder and rename it
+                # 2. Копируем референс (reference.wav)
                 speaker_reference_path = Path(speaker_wav)
                 speaker_reference_new_path = ready_dir / "reference.wav"
                 shutil.copy(speaker_reference_path, speaker_reference_new_path)
 
                 print("Обучение модели закончено!")
-                # clear_gpu_cache()
-                return "Обучение модели закончено!", config_path, vocab_file, ft_xtts_checkpoint,speaker_xtts_path, speaker_reference_new_path
+                
+                # 3. ОЧИСТКА ПО ЗАПРОСУ
+                # Очистка датасета
+                if clear_train_data in ["dataset", "all"]:
+                    dataset_dir = Path(output_path) / "dataset"
+                    if dataset_dir.exists():
+                        shutil.rmtree(dataset_dir, ignore_errors=True)
+                        print(f" [🗑️] Папка датасета удалена.")
 
-            def optimize_model(out_path, clear_train_data):
-                # print(out_path)
-                out_path = Path(out_path)  # Ensure that out_path is a Path object.
-            
-                ready_dir = out_path / "ready"
-                run_dir = out_path / "run"
-                dataset_dir = out_path / "dataset"
-            
-                # Clear specified training data directories.
-                if clear_train_data in {"run", "all"} and run_dir.exists():
-                    try:
-                        shutil.rmtree(run_dir)
-                    except PermissionError as e:
-                        print(f"Ошибка при удалении {run_dir}: {e}")
-            
-                if clear_train_data in {"dataset", "all"} and dataset_dir.exists():
-                    try:
-                        shutil.rmtree(dataset_dir)
-                    except PermissionError as e:
-                        print(f"Ошибка при удалении {dataset_dir}: {e}")
-            
-                # Get full path to model
-                model_path = ready_dir / "unoptimize_model.pth"
+                # Очистка папки run
+                if clear_train_data in ["run", "all"]:
+                    run_dir = Path(output_path) / "run"
+                    if run_dir.exists():
+                        # Небольшая пауза, чтобы Windows отпустила файлы
+                        import time
+                        time.sleep(1)
+                        shutil.rmtree(run_dir, ignore_errors=True)
+                        print(f" [🗑️] Папка временных файлов (run) удалена.")
 
-                if not model_path.is_file():
-                    return "Неоптимизированная модель не найдена в готовой папке", ""
-            
-                # Load the checkpoint and remove unnecessary parts.
-                checkpoint = torch.load(model_path, map_location=torch.device("cpu"))
-                del checkpoint["optimizer"]
+                return "Обучение завершено!", config_path, vocab_file, str(ft_xtts_checkpoint), speaker_xtts_path, str(speaker_reference_new_path)
 
-                for key in list(checkpoint["model"].keys()):
-                    if "dvae" in key:
-                        del checkpoint["model"][key]
-
-                # Make sure out_path is a Path object or convert it to Path
-                os.remove(model_path)
-
-                  # Save the optimized model.
-                optimized_model_file_name="model.pth"
-                optimized_model=ready_dir/optimized_model_file_name
-            
-                torch.save(checkpoint, optimized_model)
-                ft_xtts_checkpoint=str(optimized_model)
-
-                clear_gpu_cache()
-        
-                return f"Модель оптимизирована и сохранена в {ft_xtts_checkpoint}!", ft_xtts_checkpoint
 
             def load_params(out_path):
                 path_output = Path(out_path)
@@ -770,19 +733,11 @@ if __name__ == "__main__":
                     grad_acumm,
                     out_path,
                     max_audio_length,
+                    clear_train_data,
                 ],
                 outputs=[progress_train, xtts_config, xtts_vocab, xtts_checkpoint,xtts_speaker, speaker_reference_audio],
             )
-
-            optimize_model_btn.click(
-                fn=optimize_model,
-                inputs=[
-                    out_path,
-                    clear_train_data
-                ],
-                outputs=[progress_train,xtts_checkpoint],
-            )
-            
+           
             load_btn.click(
                 fn=load_model,
                 inputs=[
