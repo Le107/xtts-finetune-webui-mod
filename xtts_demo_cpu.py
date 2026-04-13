@@ -538,6 +538,13 @@ if __name__ == "__main__":
                     else:
                         print(f" [!] ВНИМАНИЕ: Файл model.pth не найден в {exp_path}")
 
+                    run_dir = Path(exp_path)
+                    if run_dir.exists():
+                        import time
+                        time.sleep(1) # Даем ОС время закрыть дескрипторы файлов
+                        shutil.rmtree(run_dir, ignore_errors=True)
+                        print(f" [🗑️] Папка итерации {i+1} (run) удалена.")
+
                     # Проверка Loss
                     if float(avg_loss) < 3:
                         print(f" [✅] Цель достигнута! Финальный Loss: {avg_loss}")
