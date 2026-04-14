@@ -534,13 +534,12 @@ if __name__ == "__main__":
                         shutil.move(optimized_model_src, ft_xtts_checkpoint)
                         # Теперь эта модель станет базовой для следующего шага
                         current_custom_model = str(ft_xtts_checkpoint)
-                        print(f" [+] Модель сохранена в: {ft_xtts_checkpoint}")
+                        print(f" [+] Модель перенесена в: {ft_xtts_checkpoint}")
                     else:
                         print(f" [!] ВНИМАНИЕ: Файл model.pth не найден в {exp_path}")
 
                     run_dir = Path(exp_path)
                     if run_dir.exists():
-                        import time
                         time.sleep(1) # Даем ОС время закрыть дескрипторы файлов
                         shutil.rmtree(run_dir, ignore_errors=True)
                         print(f" [🗑️] Папка итерации {i+1} (run) удалена.")
