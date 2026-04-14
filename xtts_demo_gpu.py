@@ -506,7 +506,7 @@ if __name__ == "__main__":
                         max_audio_length = max_audio_length_samples
                         # ЗАПУСК ТРЕНИРОВКИ (внутри цикла)
                         speaker_xtts_path, config_path, original_xtts_checkpoint, vocab_file, exp_path, speaker_wav = train_gpt(
-                            custom_model, version, language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv, 
+                            current_custom_model, version, language, num_epochs, batch_size, grad_acumm, train_csv, eval_csv, 
                             output_path=output_path, max_audio_length=max_audio_length
                         )
                     except Exception as e:
