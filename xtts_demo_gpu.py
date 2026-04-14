@@ -100,14 +100,18 @@ def run_tts(lang, tts_text, speaker_audio_file, temperature, speed, length_penal
     out["wav"] = torch.tensor(out["wav"]).unsqueeze(0)
     if not os.path.exists("output"):
         os.makedirs("output")
-    save_path=os.path.basename(speaker_audio_file)
-    save_path=str(f'output\{save_path}')
+    
+    save_path = os.path.join("output", os.path.basename(speaker_audio_file))
     torchaudio.save(save_path, out["wav"], 24000)
-    audio = AudioSegment.from_file(speaker_audio_file)
-    new_framerate = audio.frame_rate
-    audio = AudioSegment.from_file(save_path)
-    new_audio = audio.set_frame_rate(new_framerate)
-    new_audio.export(save_path, format="wav")
+
+    try:
+        ref_audio = AudioSegment.from_file(speaker_audio_file)
+        gen_audio = AudioSegment.from_file(save_path)
+        # Приводим и к частоте, и к количеству каналов (стерео/моно) оригинала
+        new_audio = gen_audio.set_frame_rate(ref_audio.frame_rate).set_channels(ref_audio.channels)
+        new_audio.export(save_path, format="wav")
+    except Exception as e:
+        print(f" [!] Ошибка обработки одиночного вывода: {e}")
 
     return "Речь сгенерирована!", save_path, speaker_audio_file
 
