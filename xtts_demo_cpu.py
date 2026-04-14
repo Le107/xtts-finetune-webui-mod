@@ -500,7 +500,7 @@ if __name__ == "__main__":
                         new_train, new_eval = train_test_split(df_all, test_size=eval_count, random_state=42)
                         new_train.to_csv(train_csv, index=False, sep='|')
                         new_eval.to_csv(eval_csv, index=False, sep='|')
-                        print(f" [+] Данные перемешаны для итерации {i+1}. Eval содержит {eval_count} строк.")
+                        print(f" [+] Данные перемешаны для итерации {i+1}.")
 
                     try:
                         max_audio_length = max_audio_length_samples
