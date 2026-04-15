@@ -268,8 +268,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batch_size",
         type=int,
-        help="Объем серии. По умолчанию: 2",
-        default=2,
+        help="Объем серии. По умолчанию: 1",
+        default=1,
     )
     parser.add_argument(
         "--grad_acumm",
@@ -280,8 +280,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max_audio_length",
         type=int,
-        help="Максимальный допустимый размер звука в секундах. По умолчанию: 20",
-        default=20,
+        help="Максимальный допустимый размер звука в секундах. По умолчанию: 11",
+        default=11,
     )
 
     args = parser.parse_args()
@@ -426,7 +426,7 @@ if __name__ == "__main__":
             )
             batch_size = gr.Slider(
                 label="Объем серии:",
-                minimum=2,
+                minimum=1,
                 maximum=512,
                 step=1,
                 value=args.batch_size,
