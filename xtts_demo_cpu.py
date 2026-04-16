@@ -18,6 +18,7 @@ import numpy as np
 
 import torch
 import torchaudio
+import warnings
 import traceback
 from pydub import AudioSegment
 from utils.formatter import format_audio_list,find_latest_best_model, list_audios
@@ -31,6 +32,7 @@ from TTS.tts.models.xtts import Xtts
 from TTS.tts.configs.xtts_config import XttsConfig
 from TTS.tts.models.xtts import Xtts
 
+warnings.filterwarnings("ignore")
 # Очистить журналы
 def remove_log_file(file_path):
      log_file = Path(file_path)
