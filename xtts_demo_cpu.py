@@ -129,36 +129,37 @@ def mass_predict_tts(dialogs_file, speaker_wav_dir, lang, temperature, speed, le
     wav_dir = Path(args.out_path) / speaker_wav_dir
     
     with open(dialogs_path, "r", encoding="utf-8") as f:
-        lines = [l.strip() for l in f.readlines() if "=" in l]
+        all_lines = [l.strip() for l in f.readlines() if "=" in l]
 
-    total = len(lines)
-    processed = 0
-    print(f"--- Начало массовой озвучки (Всего фраз: {total}) ---")
-
-    for line in lines:
+    # --- ПРЕДВАРИТЕЛЬНАЯ ПРОВЕРКА ФАЙЛОВ ---
+    tasks = []
+    for line in all_lines:
         line_id, raw_text = line.split("=", 1)
+        speaker_audio_file = wav_dir / f"{line_id}.wav"
+        
+        if speaker_audio_file.exists():
+            tasks.append((line_id, raw_text, str(speaker_audio_file)))
 
+    total = len(tasks)
+    processed = 0
+    
+    if total == 0:
+        return "Операция отменена: не найдено ни одного подходящего аудио-референса."
+
+    print(f"--- Начало массовой озвучки (Всего найдено фраз: {total}) ---")
+
+    for line_id, raw_text, speaker_audio_file in tasks:
         # --- ОЧИСТКА ТЕКСТА ---
-        # 1. Удаляем кавычки, скобки и спецсимволы
         tts_text = raw_text.translate(str.maketrans('', '', '"\'«»“”()[]{}*<>'))
-        
-        # 2. Правим тире и убираем лишние пробелы
         tts_text = tts_text.replace('--', ' — ').replace(' - ', ' — ')
-        tts_text = re.sub(r'\s+', ' ', tts_text)
+        tts_text = re.sub(r'\s+', ' ', tts_text).strip()
         
-        # 3. Убираем точку в конце (Борьба с "Point")
-        tts_text = tts_text.strip()
         if tts_text.endswith('.') and len(tts_text) > 3:
             tts_text = tts_text[:-1]
             
-        # 4. Финальный пробел для мягкого завершения фразы
-        tts_text = tts_text.strip() + " "
+        tts_text = tts_text + " " # Мягкое завершение
         
-        speaker_audio_file = str(wav_dir / f"{line_id}.wav")
-        if not os.path.exists(speaker_audio_file):
-            print(f" [!] Пропуск {line_id}: референс не найден")
-            continue
-
+        # --- ГЕНЕРАЦИЯ ---
         gpt_cond_latent, speaker_embedding = XTTS_MODEL.get_conditioning_latents(
             audio_path=speaker_audio_file, 
             gpt_cond_len=XTTS_MODEL.config.gpt_cond_len, 
@@ -185,6 +186,7 @@ def mass_predict_tts(dialogs_file, speaker_wav_dir, lang, temperature, speed, le
                 top_k=top_k, top_p=top_p, enable_text_splitting=sentence_split
             )
 
+        # --- СОХРАНЕНИЕ И ПОСТ-ОБРАБОТКА ---
         out["wav"] = torch.tensor(out["wav"]).unsqueeze(0)
         save_path = str(mass_out_dir / f"{line_id}.wav")
         torchaudio.save(save_path, out["wav"], 24000)
@@ -573,6 +575,7 @@ if __name__ == "__main__":
                         shutil.rmtree(run_dir, ignore_errors=True)
                         print(f" [🗑️] Папка временных файлов (run) удалена.")
 
+                print(final_status)
                 return "Обучение завершено!", config_path, vocab_file, str(ft_xtts_checkpoint), speaker_xtts_path, str(speaker_reference_new_path)
 
             def load_params(out_path):
