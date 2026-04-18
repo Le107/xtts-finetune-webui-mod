@@ -530,7 +530,7 @@ if __name__ == "__main__":
                     if os.path.exists(loss_file_path):
                         with open(loss_file_path, "r") as f:
                             avg_loss = float(f.read().strip())
-                        print(f" [📊] Считан Loss из файла: {avg_loss}")
+                        print(f" [≡] Считан Loss из файла: {avg_loss}")
                     else:
                         print(f" [!] Файл {loss_file_path} не найден. Используется Loss по умолчанию: 4.0")
 
@@ -552,11 +552,11 @@ if __name__ == "__main__":
 
                     # Проверка Loss
                     if float(avg_loss) < 3:
-                        print(f" [✅] Цель достигнута! Финальный Loss: {avg_loss}")
+                        print(f" [√] Цель достигнута! Финальный Loss: {avg_loss}")
                         break 
                     else:
                         if i < max_attempts - 1:
-                            print(f" [♻️] Loss {avg_loss:.4f} > 3. Запуск следующей итерации...")
+                            print(f" [»️] Loss {avg_loss:.4f} > 3. Запуск следующей итерации...")
                             clear_gpu_cache()
                         else:
                             print(f" [!] Попытки исчерпаны. Остановка на Loss: {avg_loss:.4f}")
@@ -572,14 +572,14 @@ if __name__ == "__main__":
                 if clear_train_data in ["dataset", "all"]:
                     if dataset_path.exists():
                         shutil.rmtree(dataset_path, ignore_errors=True)
-                        print(f" [🗑️] Папка датасета удалена.")
+                        print(f" [×] Папка датасета удалена.")
 
                 if clear_train_data in ["run", "all"]:
                     run_dir = Path(output_path) / "run"
                     if run_dir.exists():
                         time.sleep(1)
                         shutil.rmtree(run_dir, ignore_errors=True)
-                        print(f" [🗑️] Папка временных файлов (run) удалена.")
+                        print(f" [×] Папка временных файлов (run) удалена.")
 
                 print(final_status)
                 return "Обучение завершено!", config_path, vocab_file, str(ft_xtts_checkpoint), speaker_xtts_path, str(speaker_reference_new_path)
