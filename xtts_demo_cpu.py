@@ -542,6 +542,7 @@ if __name__ == "__main__":
                     ft_xtts_checkpoint = ready_dir / "model.pth"
 
                     if os.path.exists(optimized_model_src):
+                        print(" [→] Переношу готовую модель в папку ready...")
                         shutil.move(optimized_model_src, ft_xtts_checkpoint)
                         # Теперь эта модель станет базовой для следующего шага
                         current_custom_model = str(ft_xtts_checkpoint)
