@@ -546,7 +546,7 @@ if __name__ == "__main__":
                         shutil.move(optimized_model_src, ft_xtts_checkpoint)
                         # Теперь эта модель станет базовой для следующего шага
                         current_custom_model = str(ft_xtts_checkpoint)
-                        print(f" [+] Модель перенесена в: {ft_xtts_checkpoint}")
+                        print(f" [→] Модель перенесена в: {ft_xtts_checkpoint}")
                     else:
                         print(f" [!] ВНИМАНИЕ: Файл model.pth не найден в {exp_path}")
 
@@ -556,7 +556,7 @@ if __name__ == "__main__":
                         break 
                     else:
                         if i < max_attempts - 1:
-                            print(f" [»️] Loss {avg_loss:.4f} > 3. Запуск следующей итерации...")
+                            print(f" [»] Loss {avg_loss:.4f} > 3. Запуск следующей итерации...")
                             clear_gpu_cache()
                         else:
                             print(f" [!] Попытки исчерпаны. Остановка на Loss: {avg_loss:.4f}")
