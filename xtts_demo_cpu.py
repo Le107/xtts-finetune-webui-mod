@@ -494,6 +494,9 @@ if __name__ == "__main__":
                 
                 for i in range(max_attempts):
                     print(f"--- Итерация обучения {i+1}/{max_attempts} ---")
+                    run_dir = Path(output_path) / "run"
+                    if run_dir.exists():
+                        shutil.rmtree(run_dir, ignore_errors=True)
                     
                     # Перемешивание данных (начиная со второй итерации)
                     if i > 0:

@@ -494,6 +494,9 @@ if __name__ == "__main__":
                 
                 for i in range(max_attempts):
                     print(f"--- Итерация обучения {i+1}/{max_attempts} ---")
+                    run_dir = Path(output_path) / "run"
+                    if run_dir.exists():
+                        shutil.rmtree(run_dir, ignore_errors=True)
                     
                     # Перемешивание данных (начиная со второй итерации)
                     if i > 0:
@@ -508,11 +511,9 @@ if __name__ == "__main__":
                         new_train, new_eval = train_test_split(df_all, test_size=eval_count, random_state=42)
                         new_train.to_csv(train_csv, index=False, sep='|')
                         new_eval.to_csv(eval_csv, index=False, sep='|')
-                        clear_gpu_cache()
                         print(f" [+] Данные перемешаны для итерации {i+1}.")
 
                     try:
-                        clear_gpu_cache()
                         max_audio_length = max_audio_length_samples
                         # ЗАПУСК ТРЕНИРОВКИ (внутри цикла)
                         speaker_xtts_path, config_path, original_xtts_checkpoint, vocab_file, exp_path, speaker_wav = train_gpt(
