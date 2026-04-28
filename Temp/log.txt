@@ -1,4 +1,4 @@
-Начало неплохое, но думаю порог на авто нужно сделать, чтобы поднимался быстрее(сильнее) или ставился от текущего: 
+
 d:\Download\Ai\Voice_sorting>call venv/scripts/activate
 pygame 2.6.1 (SDL 2.28.4, Python 3.10.0)
 Hello from the pygame community. https://www.pygame.org/contribute.html
